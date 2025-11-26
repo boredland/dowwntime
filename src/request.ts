@@ -12,7 +12,7 @@ export const measureRequest = async (
 	const result = await new Promise<{
 		statusCode: number;
 		durationMs: number;
-	}>((resolve) => {
+	}>((resolve, reject) => {
 		let tlsHandshakeAt: number;
 		let firstByteAt: number;
 		const urlObj = typeof url === "string" ? new URL(url) : url;
@@ -35,6 +35,9 @@ export const measureRequest = async (
 					durationMs: Math.max(0, durationMs), // Ensure non-negative
 				});
 			});
+		});
+		req.on("error", (err) => {
+			reject(err);
 		});
 		req.on("socket", (socket) => {
 			socket.on("secureConnect", () => {
