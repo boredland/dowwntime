@@ -196,7 +196,7 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 			if (options.getStatus) {
 				status = options.getStatus(statusCode, path, durationMs);
 			} else {
-				status = statusCode >= 200 ? "up" : "down";
+				status = statusCode >= 200 && statusCode < 300 ? "up" : "down";
 			}
 
 			const measurement = {
