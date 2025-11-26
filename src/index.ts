@@ -242,31 +242,28 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 			const startOfPast60m = dayjs()
 				.subtract(60, "minute")
 				.startOf("minute")
-				.get("milliseconds");
+				.valueOf();
 			const startOfPast24h = dayjs()
 				.subtract(24, "hours")
 				.startOf("hour")
-				.get("milliseconds");
-			const startOfPast7d = dayjs()
-				.subtract(7, "day")
-				.startOf("day")
-				.get("milliseconds");
+				.valueOf();
+			const startOfPast7d = dayjs().subtract(7, "day").startOf("day").valueOf();
 			const startOfPast30d = dayjs()
 				.subtract(30, "day")
 				.startOf("day")
-				.get("milliseconds");
+				.valueOf();
 
-			const getAvergageDuration = (since: number) => {
+			const getAverageDuration = (since: number) => {
 				const filtered = history.filter((item) => item.timestamp >= since);
 				if (filtered.length === 0) return null;
 				const total = filtered.reduce((acc, curr) => acc + curr.durationMs, 0);
 				return Math.round(total / filtered.length);
 			};
 
-			const avgDuration60m = getAvergageDuration(startOfPast60m);
-			const avgDuration24h = getAvergageDuration(startOfPast24h);
-			const avgDuration7d = getAvergageDuration(startOfPast7d);
-			const avgDuration30d = getAvergageDuration(startOfPast30d);
+			const avgDuration60m = getAverageDuration(startOfPast60m);
+			const avgDuration24h = getAverageDuration(startOfPast24h);
+			const avgDuration7d = getAverageDuration(startOfPast7d);
+			const avgDuration30d = getAverageDuration(startOfPast30d);
 
 			const getRelativeDowntime = (since: number) => {
 				const filtered = history.filter((item) => item.timestamp >= since);
