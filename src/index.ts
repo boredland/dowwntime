@@ -95,7 +95,11 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 					param.schema?.example ??
 					param.schema?.examples?.[0];
 
-				if (!exampleValue && "enum" in param.schema) {
+				if (
+					!exampleValue &&
+					(param.required || param.in === "path") &&
+					"enum" in param.schema
+				) {
 					// If the parameter has an enum, use the first value from the enum
 					const enumValues = param.schema.enum;
 					if (Array.isArray(enumValues) && enumValues.length > 0) {
@@ -104,20 +108,27 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 					}
 				}
 
+				// Log and skip if no example value for required parameter
 				if (!exampleValue && param.required) {
 					debug(`No example value for parameter ${param.name} in ${path}`);
 					continue;
 				}
 
-				// if exampleValue is still undefined or null, skip this parameter
-				if (!exampleValue) continue;
-
 				if (param.in === "path") {
+					if (!exampleValue) {
+						debug(
+							`No example value for path parameter ${param.name} in ${path}`,
+						);
+						continue;
+					}
 					// Replace path parameter with a placeholder value
 					const placeholder = `{${param.name}}`;
 					_path = _path.replace(placeholder, exampleValue);
 					url.pathname = _path;
 				}
+
+				// if exampleValue is still undefined or null, skip this parameter
+				if (!exampleValue) continue;
 
 				if (param.in === "query") {
 					url.searchParams.set(param.name, exampleValue);
