@@ -109,6 +109,9 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 					continue;
 				}
 
+				// if exampleValue is still undefined or null, skip this parameter
+				if (!exampleValue) continue;
+
 				if (param.in === "path") {
 					// Replace path parameter with a placeholder value
 					const placeholder = `{${param.name}}`;
