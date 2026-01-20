@@ -152,6 +152,9 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 			const metrics = await measureRequest(url, {
 				method: "GET",
 				timeout: options.timeoutMs ?? 5000,
+				headers: {
+					"cache-control": "no-cache",
+				},
 			});
 			debug(`Measured ${path}:`, metrics);
 			return {
