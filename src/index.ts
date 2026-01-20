@@ -185,31 +185,13 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 				),
 			);
 
-			// Filter out spikes: keep values within 1.5 * IQR of Q1-Q3
-			const durations = results
-				.map((r) => r?.durationMs ?? 0)
-				.sort((a, b) => a - b);
-			const q1 = durations[Math.floor(durations.length * 0.25)] ?? 0;
-			const q3 = durations[Math.floor(durations.length * 0.75)] ?? 0;
-			const iqr = q3 - q1;
-			const lowerBound = q1 - 1.5 * iqr;
-			const upperBound = q3 + 1.5 * iqr;
-
-			const filteredResults = results.filter(
-				(r) => r && r.durationMs >= lowerBound && r.durationMs <= upperBound,
-			);
-
 			const durationMs = Math.round(
-				filteredResults.reduce(
-					(acc, curr) => acc + (curr?.durationMs ?? 0),
-					0,
-				) / filteredResults.length,
+				results.reduce((acc, curr) => acc + (curr?.durationMs ?? 0), 0) /
+					results.length,
 			);
 
 			let status: "up" | "down" | "degraded" = "down";
-			const statusCode = Math.max(
-				...filteredResults.map((r) => r?.statusCode ?? 0),
-			);
+			const statusCode = Math.max(...results.map((r) => r?.statusCode ?? 0));
 			if (options.getStatus) {
 				status = options.getStatus(statusCode, path, durationMs);
 			} else {
