@@ -62,7 +62,7 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 
 	const schema = dereferenceResult.schema;
 
-	const servers: { url: string; description?: string }[] = options.baseUrl
+	const servers = options.baseUrl
 		? [{ url: options.baseUrl }]
 		: (schema.servers ?? []);
 
@@ -76,7 +76,15 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 	const fetchConfigurations = new Map<string, URL>();
 
 	for (const server of servers) {
-		const baseUrl = server.url;
+		let baseUrl = server.url;
+		if (server.variables) {
+			for (const [name, variable] of Object.entries(server.variables)) {
+				const v = variable as { default?: string };
+				if (v.default != null) {
+					baseUrl = baseUrl.replaceAll(`{${name}}`, v.default);
+				}
+			}
+		}
 		const serverLabel = server.description ?? new URL(baseUrl).host;
 
 		if (schema.paths) {
