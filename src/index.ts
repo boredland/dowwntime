@@ -61,81 +61,91 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 
 	const schema = dereferenceResult.schema;
 
-	const baseUrl = options.baseUrl ?? schema.servers?.[0]?.url;
+	const servers: { url: string; description?: string }[] = options.baseUrl
+		? [{ url: options.baseUrl }]
+		: (schema.servers ?? []);
 
-	if (!baseUrl) {
+	if (servers.length === 0) {
 		throw new Error(
 			"No base URL found in OpenAPI spec and no baseUrl option provided.",
 		);
 	}
 
+	const multipleServers = servers.length > 1;
 	const fetchConfigurations = new Map<string, URL>();
 
-	if (schema.paths) {
-		for (const path of Object.keys(schema.paths)) {
-			const pathItem = schema.paths[path];
-			if (!pathItem) continue;
-			if (!pathItem.get) continue;
+	for (const server of servers) {
+		const baseUrl = server.url;
+		const serverLabel = server.description ?? new URL(baseUrl).host;
 
-			const url = new URL(path, baseUrl);
-			let _path = path;
+		if (schema.paths) {
+			for (const path of Object.keys(schema.paths)) {
+				const pathItem = schema.paths[path];
+				if (!pathItem) continue;
+				if (!pathItem.get) continue;
 
-			if (
-				"200" in (pathItem.get?.responses ?? {}) &&
-				"text/event-stream" in (pathItem.get.responses?.["200"]?.content ?? {})
-			) {
-				continue; // Skip SSE endpoints
-			}
-
-			for (const param of pathItem.get.parameters || []) {
-				let exampleValue =
-					options.getExampleValue?.(param.name, path) ??
-					param.example ??
-					param.examples?.[0] ??
-					param.schema?.example ??
-					param.schema?.examples?.[0];
+				const url = new URL(path, baseUrl);
+				let _path = path;
 
 				if (
-					!exampleValue &&
-					(param.required || param.in === "path") &&
-					"enum" in param.schema
+					"200" in (pathItem.get?.responses ?? {}) &&
+					"text/event-stream" in
+						(pathItem.get.responses?.["200"]?.content ?? {})
 				) {
-					// If the parameter has an enum, use the first value from the enum
-					const enumValues = param.schema.enum;
-					if (Array.isArray(enumValues) && enumValues.length > 0) {
-						// Use the first enum value as the example value
-						exampleValue = enumValues[0];
+					continue; // Skip SSE endpoints
+				}
+
+				for (const param of pathItem.get.parameters || []) {
+					let exampleValue =
+						options.getExampleValue?.(param.name, path) ??
+						param.example ??
+						param.examples?.[0] ??
+						param.schema?.example ??
+						param.schema?.examples?.[0];
+
+					if (
+						!exampleValue &&
+						(param.required || param.in === "path") &&
+						"enum" in param.schema
+					) {
+						// If the parameter has an enum, use the first value from the enum
+						const enumValues = param.schema.enum;
+						if (Array.isArray(enumValues) && enumValues.length > 0) {
+							// Use the first enum value as the example value
+							exampleValue = enumValues[0];
+						}
 					}
-				}
 
-				// Log and skip if no example value for required parameter
-				if (!exampleValue && param.required) {
-					debug(`No example value for parameter ${param.name} in ${path}`);
-					continue;
-				}
-
-				if (param.in === "path") {
-					if (!exampleValue) {
-						debug(
-							`No example value for path parameter ${param.name} in ${path}`,
-						);
+					// Log and skip if no example value for required parameter
+					if (!exampleValue && param.required) {
+						debug(`No example value for parameter ${param.name} in ${path}`);
 						continue;
 					}
-					// Replace path parameter with a placeholder value
-					const placeholder = `{${param.name}}`;
-					_path = _path.replace(placeholder, exampleValue);
-					url.pathname = _path;
+
+					if (param.in === "path") {
+						if (!exampleValue) {
+							debug(
+								`No example value for path parameter ${param.name} in ${path}`,
+							);
+							continue;
+						}
+						// Replace path parameter with a placeholder value
+						const placeholder = `{${param.name}}`;
+						_path = _path.replace(placeholder, exampleValue);
+						url.pathname = _path;
+					}
+
+					// if exampleValue is still undefined or null, skip this parameter
+					if (!exampleValue) continue;
+
+					if (param.in === "query") {
+						url.searchParams.set(param.name, exampleValue);
+					}
 				}
 
-				// if exampleValue is still undefined or null, skip this parameter
-				if (!exampleValue) continue;
-
-				if (param.in === "query") {
-					url.searchParams.set(param.name, exampleValue);
-				}
+				const key = multipleServers ? `[${serverLabel}] ${path}` : path;
+				fetchConfigurations.set(key, url);
 			}
-
-			fetchConfigurations.set(path, url);
 		}
 	}
 
