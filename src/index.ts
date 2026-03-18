@@ -31,6 +31,7 @@ export type DowwntimeOptions = {
 		statusCode: number,
 		path: string,
 		durationMs: number,
+		body?: unknown,
 	) => "up" | "down" | "degraded";
 	/** Request timeout in milliseconds */
 	timeoutMs?: number;
@@ -176,6 +177,7 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 			return {
 				statusCode: 0,
 				durationMs: Date.now() - start,
+				body: undefined as unknown,
 				url: url.toString(),
 				timestamp: start,
 			};
@@ -202,8 +204,9 @@ export const run = async (options: ReturnType<typeof defineConfig>) => {
 
 			let status: "up" | "down" | "degraded" = "down";
 			const statusCode = Math.max(...results.map((r) => r?.statusCode ?? 0));
+			const lastBody = results.findLast((r) => r?.body !== undefined)?.body;
 			if (options.getStatus) {
-				status = options.getStatus(statusCode, path, durationMs);
+				status = options.getStatus(statusCode, path, durationMs, lastBody);
 			} else {
 				status = statusCode >= 200 && statusCode < 300 ? "up" : "down";
 			}
