@@ -43,7 +43,9 @@
 		"dist",
 		"README.md"
 	],
-	"bin": "./dist/cli.mjs",
+	"bin": {
+		"dowwntime": "dist/cli.mjs"
+	},
 	"exports": {
 		".": "./dist/index.mjs",
 		"./package.json": "./package.json"
