@@ -25,14 +25,14 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           ref: dowwntime
-      - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # v6
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 24
+          bun-version: latest
       - name: Create package.json
         run: echo '{"name":"dowwntime","version":"1.0.0","type":"module"}' > package.json
 
       - name: Install dependencies
-        run: npm i dowwntime@latest
+        run: bun add dowwntime@latest
       - name: retrieve config
         run: |
           git fetch origin main
@@ -43,7 +43,7 @@ jobs:
         env:
           NODE_DEBUG: "dowwntime"
         run: |
-          npx dowwntime@latest
+          bunx dowwntime@latest
       - name: Check in result
         run: |
           git add storage.tmp
