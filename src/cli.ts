@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 import "./index.ts";
 import path from "node:path";
 import { program } from "commander";
