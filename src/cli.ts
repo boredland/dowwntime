@@ -1,8 +1,9 @@
-#!/usr/bin/env bun
-import "./index.ts";
+#!/usr/bin/env node
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { program } from "commander";
 import { type DowwntimeOptions, defineConfig, run } from "./index.ts";
+import "./index.ts";
 
 program.option(
 	"-c, --config [string]",
@@ -25,22 +26,28 @@ try {
 	configModule = await import(_path);
 } catch (e) {
 	const err = e as NodeJS.ErrnoException;
-	// bun's node-compat ESM loader rejects .ts extensions when the entry is .mjs;
-	// spawn a bun subprocess to load and serialize the config instead.
-	if (err.code !== "ERR_UNKNOWN_FILE_EXTENSION" || !_path.endsWith(".ts"))
+	const isBun = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined";
+	if (
+		err.code !== "ERR_UNKNOWN_FILE_EXTENSION" ||
+		!_path.endsWith(".ts") ||
+		isBun
+	)
 		throw e;
-	const proc = Bun.spawn(
-		[
-			"bun",
-			"-e",
-			`import c from ${JSON.stringify(_path)}; process.stdout.write(JSON.stringify(c.default ?? c))`,
-		],
-		{ stdout: "pipe", stderr: "inherit" },
+	// Node can't import .ts configs directly; re-exec the CLI under bun so the
+	// config (which may contain class instances like ConsoleAlert) loads natively.
+	const result = spawnSync(
+		"bun",
+		[process.argv[1] ?? "", ...process.argv.slice(2)],
+		{ stdio: "inherit" },
 	);
-	await proc.exited;
-	configModule = {
-		default: JSON.parse(await new Response(proc.stdout).text()),
-	};
+	if ((result.error as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
+		// biome-ignore lint/suspicious/noConsole: CLI user-facing error
+		console.error(
+			"dowwntime: loading a .ts config requires bun (or Node 24+). Install bun: https://bun.sh",
+		);
+		process.exit(1);
+	}
+	process.exit(result.status ?? 1);
 }
 
 const config = configModule.default;
