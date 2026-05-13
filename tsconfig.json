@@ -9,7 +9,7 @@
 		// See also https://aka.ms/tsconfig/module
 		"module": "preserve",
 		"target": "es2024",
-		"types": ["node"],
+		"types": ["node", "bun-types"],
 		// For nodejs:
 		// "lib": ["esnext"],
 		// "types": ["node"],

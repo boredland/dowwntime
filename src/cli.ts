@@ -2,7 +2,7 @@
 import "./index.ts";
 import path from "node:path";
 import { program } from "commander";
-import { defineConfig, run } from "./index.ts";
+import { type DowwntimeOptions, defineConfig, run } from "./index.ts";
 
 program.option(
 	"-c, --config [string]",
@@ -18,9 +18,31 @@ const options = program.opts<{
 
 const configPath = options.config;
 
-// Dynamically import the config file
 const _path = path.resolve(process.cwd(), configPath);
-const configModule = await import(_path);
+
+let configModule: { default: unknown };
+try {
+	configModule = await import(_path);
+} catch (e) {
+	const err = e as NodeJS.ErrnoException;
+	// bun's node-compat ESM loader rejects .ts extensions when the entry is .mjs;
+	// spawn a bun subprocess to load and serialize the config instead.
+	if (err.code !== "ERR_UNKNOWN_FILE_EXTENSION" || !_path.endsWith(".ts"))
+		throw e;
+	const proc = Bun.spawn(
+		[
+			"bun",
+			"-e",
+			`import c from ${JSON.stringify(_path)}; process.stdout.write(JSON.stringify(c.default ?? c))`,
+		],
+		{ stdout: "pipe", stderr: "inherit" },
+	);
+	await proc.exited;
+	configModule = {
+		default: JSON.parse(await new Response(proc.stdout).text()),
+	};
+}
+
 const config = configModule.default;
 
 if (!config || typeof config !== "object") {
@@ -29,6 +51,4 @@ if (!config || typeof config !== "object") {
 	);
 }
 
-// Run the main function with the loaded config
-// Assuming the main function is named 'run' and is exported from index.ts
-await run(defineConfig(config));
+await run(defineConfig(config as DowwntimeOptions));
